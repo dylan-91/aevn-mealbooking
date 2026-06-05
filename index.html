@@ -632,6 +632,11 @@
             <input id="employeeCode" class="input" type="text" placeholder="Mã nhân viên" autocomplete="off" />
           </div>
 
+          <div class="field">
+            <label for="employeePassword">MẬT KHẨU</label>
+            <input id="employeePassword" class="input" type="password" placeholder="Mật khẩu" autocomplete="off" />
+          </div>
+
           <button id="loginButton" class="button button-primary" type="button">ĐĂNG NHẬP</button>
 
           <div id="loginHint" class="login-footnote"></div>
@@ -680,7 +685,7 @@
 
   <script>
     const DAY_NAMES = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
-    const API_BASE_URL = "https://script.google.com/macros/s/AKfycbzPqP6KNzH49fJ6eKGYOTC4dHxXIBAtP7SNJI_hQ81u8bHqZjfnHyKoIMpWy3KHb6-0BA/exec";
+    const API_BASE_URL = "https://script.google.com/macros/s/AKfycbw_Cowr316pDaXXm7yRNTR4587UDM8-RmayDiiyjxjFavlYt1fa3DZ7ubqbc8jxwLGDlA/exec";
 
     const state = {
       currentEmployee: null,
@@ -693,6 +698,7 @@
     const loginScreen = document.getElementById("loginScreen");
     const homeScreen = document.getElementById("homeScreen");
     const employeeCodeInput = document.getElementById("employeeCode");
+    const employeePasswordInput = document.getElementById("employeePassword");
     const employeeName = document.getElementById("employeeName");
     const employeeCodeLabel = document.getElementById("employeeCodeLabel");
     const loginHint = document.getElementById("loginHint");
@@ -1155,11 +1161,18 @@
       }
     }
 
-    async function login(code) {
+    async function login(code, password) {
       const normalizedCode = normalizeCode(code);
+      const normalizedPassword = normalizeText(password);
       if (normalizedCode.length < 6) {
         showToast("Mã nhân viên phải có ít nhất 6 ký tự");
         employeeCodeInput.focus();
+        return false;
+      }
+
+      if (!normalizedPassword) {
+        showToast("Nhập mật khẩu trước");
+        employeePasswordInput.focus();
         return false;
       }
 
@@ -1172,6 +1185,7 @@
         setBusy(true);
         const result = await apiGet("login", {
           epcode: normalizedCode,
+          eppasswd: normalizedPassword,
           week: state.registrationWindow.week,
           year: state.registrationWindow.year
         });
@@ -1209,6 +1223,7 @@
       state.currentEmployee = null;
       localStorage.removeItem("mealBookingEmployeeCode");
       employeeCodeInput.value = "";
+      employeePasswordInput.value = "";
       setView("login");
       showToast("Đã đăng xuất");
     }
@@ -1245,15 +1260,22 @@
 
     loginButton.addEventListener("click", () => {
       const code = employeeCodeInput.value.trim();
+      const password = employeePasswordInput.value;
       if (!code) {
         showToast("Nhập mã nhân viên trước");
         employeeCodeInput.focus();
         return;
       }
-      login(code);
+      login(code, password);
     });
 
     employeeCodeInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        loginButton.click();
+      }
+    });
+
+    employeePasswordInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         loginButton.click();
       }
@@ -1284,8 +1306,8 @@
     const savedCode = localStorage.getItem("mealBookingEmployeeCode");
     setView("login");
     loadBootstrapData().then(() => {
-      if (savedCode && workbookState.ready) {
-        login(savedCode);
+      if (savedCode) {
+        employeeCodeInput.value = savedCode;
       }
     });
   </script>

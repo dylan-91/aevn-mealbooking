@@ -21,7 +21,8 @@ function doGet(e) {
 
     if (action === 'login') {
       const epcode = normalizeCode(e.parameter.epcode || e.parameter.msnv);
-      return jsonResponse(handleLogin(epcode));
+      const eppasswd = normalizeText(e.parameter.eppasswd || e.parameter.password || e.parameter.passwd);
+      return jsonResponse(handleLogin(epcode, eppasswd));
     }
 
     return jsonResponse({ success: false, message: 'Unsupported action' });
@@ -75,9 +76,13 @@ function handleBootstrap() {
   };
 }
 
-function handleLogin(epcode) {
+function handleLogin(epcode, eppasswd) {
   if (!epcode || epcode.length < 6) {
     return { success: false, message: 'Mã nhân viên phải có ít nhất 6 ký tự' };
+  }
+
+  if (!eppasswd) {
+    return { success: false, message: 'Vui lòng nhập mật khẩu' };
   }
 
   const ss = getWorkbook();
@@ -85,6 +90,7 @@ function handleLogin(epcode) {
   const employee = employees
     .map((r) => ({
       code: normalizeCode(r.epuid),
+      password: normalizeText(r.eppasswd),
       name: normalizeText(r.epfullname),
       dpcode: normalizeText(r.dpcode),
       dpname: normalizeText(r.dpname)
@@ -92,7 +98,11 @@ function handleLogin(epcode) {
     .find((r) => r.code === epcode);
 
   if (!employee) {
-    return { success: false, message: 'Sai mã nhân viên' };
+    return { success: false, message: 'Sai mã nhân viên hoặc mật khẩu' };
+  }
+
+  if (employee.password !== normalizeText(eppasswd)) {
+    return { success: false, message: 'Sai mã nhân viên hoặc mật khẩu' };
   }
 
   const registration = getNextWeekWindow();
