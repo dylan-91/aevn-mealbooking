@@ -503,9 +503,9 @@
             <input id="employeeCode" class="input" type="text" placeholder="Ví dụ: AE0791" autocomplete="off" />
           </div>
 
-          <button id="loginButton" class="button button-primary" type="button">XÁC NHẬN ĐĂNG NHẬP</button>
+          <button id="loginButton" class="button button-primary" type="button">ĐĂNG NHẬP</button>
 
-          <div id="loginHint" class="login-footnote">Đang nạp dữ liệu Excel...</div>
+          <div id="loginHint" class="login-footnote"></div>
         </div>
       </section>
 
@@ -1019,7 +1019,7 @@
         console.error(error);
       } finally {
         loginButton.disabled = false;
-        loginButton.textContent = "XÁC NHẬN ĐĂNG NHẬP";
+        loginButton.textContent = "ĐĂNG NHẬP";
       }
     }
 
