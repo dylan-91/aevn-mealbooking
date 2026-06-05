@@ -613,9 +613,9 @@
         align-items: flex-start;
         gap: 6px;
       }
-      .field-grid.two-col { grid-template-columns: 1fr; }
+      .field-grid.two-col { grid-template-columns: 1fr 1fr; }
       .banner { grid-template-columns: 1fr; }
-      .day-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .day-picker { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     }
   </style>
 </head>
@@ -866,6 +866,7 @@
         menuCode: "",
         overtime: "N",
         overtimeMealCode: "",
+        overtimeMenuCode: "",
         dayOff: "N"
       };
       return state.dayEntries[dayKey];
@@ -877,6 +878,7 @@
       entry.menuCode = "";
       entry.overtime = "";
       entry.overtimeMealCode = "";
+      entry.overtimeMenuCode = "";
     }
 
     function applyDefaultDaySelections(entry) {
@@ -885,6 +887,7 @@
       entry.menuCode = "";
       entry.overtime = "N";
       entry.overtimeMealCode = "";
+      entry.overtimeMenuCode = "";
     }
 
     function optionsHtml(items, selectedValue, placeholderText) {
@@ -903,13 +906,15 @@
         && !entry.shiftCode
         && !entry.mealCode
         && !entry.menuCode
-        && !entry.overtimeMealCode;
+        && !entry.overtimeMealCode
+        && !entry.overtimeMenuCode;
     }
 
     function isDayComplete(entry) {
       if (entry.dayOff === "Y") return true;
       if (!entry.shiftCode || !entry.mealCode || !entry.menuCode) return false;
       if (entry.overtime === "Y" && !entry.overtimeMealCode) return false;
+      if (entry.overtime === "Y" && !entry.overtimeMenuCode) return false;
       return true;
     }
 
@@ -956,16 +961,27 @@
       if (!isDayOff && entry.mealCode && !entry.menuCode && menus.length === 1) entry.menuCode = menus[0].code;
 
       const overtimeMeals = getMealsForShift(entry.shiftCode, true);
-      if (entry.overtime !== "Y") entry.overtimeMealCode = "";
+      if (entry.overtime !== "Y") {
+        entry.overtimeMealCode = "";
+        entry.overtimeMenuCode = "";
+      }
       if (!overtimeMeals.some((item) => item.code === entry.overtimeMealCode)) entry.overtimeMealCode = "";
       if (!isDayOff && entry.overtime === "Y" && !entry.overtimeMealCode && overtimeMeals.length === 1) {
         entry.overtimeMealCode = overtimeMeals[0].code;
       }
 
+      const overtimeMenus = getMenusForMeal(entry.overtimeMealCode);
+      if (!overtimeMenus.some((item) => item.code === entry.overtimeMenuCode)) entry.overtimeMenuCode = "";
+      if (!isDayOff && entry.overtime === "Y" && entry.overtimeMealCode && !entry.overtimeMenuCode && overtimeMenus.length === 1) {
+        entry.overtimeMenuCode = overtimeMenus[0].code;
+      }
+
       const mealOptions = optionsHtml(mainMeals, entry.mealCode, "Chọn bữa chính");
       const menuOptions = optionsHtml(menus, entry.menuCode, "Chọn món ăn");
-      const overtimeMealOptions = optionsHtml(overtimeMeals, entry.overtimeMealCode, "Chọn bữa làm thêm");
+      const overtimeMealOptions = optionsHtml(overtimeMeals, entry.overtimeMealCode, "Chọn bữa tăng ca");
+      const overtimeMenuOptions = optionsHtml(overtimeMenus, entry.overtimeMenuCode, "Chọn món tăng ca");
       const overtimeDisabled = isDayOff || entry.overtime !== "Y";
+      const overtimeMenuDisabled = overtimeDisabled || !entry.overtimeMealCode;
 
       return `
         <article class="menu-card">
@@ -993,24 +1009,28 @@
                 <select class="select-field" data-day="${day.key}" data-field="mealCode"${(isDayOff || !hasShift) ? " disabled" : ""}>${mealOptions}</select>
               </div>
             </div>
-            <div class="field-grid one-col">
+            <div class="field-grid two-col">
               <div class="input-group">
                 <label class="input-label">Món ăn</label>
                 <select class="select-field" data-day="${day.key}" data-field="menuCode"${(isDayOff || !hasMeal) ? " disabled" : ""}>${menuOptions}</select>
               </div>
-            </div>
-            <div class="field-grid two-col">
               <div class="input-group">
-                <label class="input-label">Đăng ký bữa làm thêm</label>
+                <label class="input-label">Đăng ký tăng ca</label>
                 <select class="select-field" data-day="${day.key}" data-field="overtime"${isDayOff ? " disabled" : ""}>
                   <option value=""${entry.overtime === "" ? " selected" : ""}>Chọn</option>
                   <option value="N"${entry.overtime === "N" ? " selected" : ""}>Không</option>
                   <option value="Y"${entry.overtime === "Y" ? " selected" : ""}>Có</option>
                 </select>
               </div>
+            </div>
+            <div class="field-grid two-col">
               <div class="input-group">
-                <label class="input-label">Bữa ăn làm thêm</label>
+                <label class="input-label">Bữa ăn tăng ca</label>
                 <select class="select-field" data-day="${day.key}" data-field="overtimeMealCode"${overtimeDisabled ? " disabled" : ""}>${overtimeMealOptions}</select>
+              </div>
+              <div class="input-group">
+                <label class="input-label">Món ăn giờ tăng ca</label>
+                <select class="select-field" data-day="${day.key}" data-field="overtimeMenuCode"${overtimeMenuDisabled ? " disabled" : ""}>${overtimeMenuOptions}</select>
               </div>
             </div>
           </div>
@@ -1049,14 +1069,21 @@
         entry.mealCode = "";
         entry.menuCode = "";
         entry.overtimeMealCode = "";
+        entry.overtimeMenuCode = "";
       }
 
       if (field === "mealCode") {
         entry.menuCode = "";
       }
 
+      if (field === "overtimeMealCode") {
+        entry.overtimeMenuCode = "";
+      }
+
       if (field === "overtime" && entry.overtime !== "Y") {
         entry.overtime = "N";
+        entry.overtimeMealCode = "";
+        entry.overtimeMenuCode = "";
       }
 
       buildMenuCards();
@@ -1076,7 +1103,8 @@
         if (!entry.shiftCode) missing.push("ca làm việc");
         if (!entry.mealCode) missing.push("bữa ăn chính");
         if (!entry.menuCode) missing.push("món ăn");
-        if (entry.overtime === "Y" && !entry.overtimeMealCode) missing.push("bữa ăn làm thêm");
+        if (entry.overtime === "Y" && !entry.overtimeMealCode) missing.push("bữa ăn tăng ca");
+        if (entry.overtime === "Y" && !entry.overtimeMenuCode) missing.push("món ăn giờ tăng ca");
         if (missing.length) {
           issues.push(`${day.dayName} (${day.date}): thiếu ${missing.join(", ")}`);
         }
