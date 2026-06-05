@@ -84,6 +84,10 @@ Sau vài phút, web public thường có dạng:
 https://aevndyeing.github.io/mealbooking/
 ```
 
+Neu ban muon dung URL mac dinh cua GitHub Pages:
+- Xoa custom domain trong `Settings -> Pages -> Custom domain`.
+- Dam bao file `CNAME` khong ton tai trong repository.
+
 ## 9) Checklist Before Public Release
 
 Kiểm tra các mục sau:
