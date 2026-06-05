@@ -1013,8 +1013,6 @@
         workbookState.udc = result.udc || [];
         workbookState.ordered = result.ordered || [];
         workbookState.ready = true;
-
-        loginHint.textContent = "Đã nạp dữ liệu từ Google Sheets.";
       } catch (error) {
         workbookState.ready = false;
         loginHint.textContent = "Không đọc được dữ liệu từ API Google Apps Script.";
