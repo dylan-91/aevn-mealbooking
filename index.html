@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hệ Thống Đặt Cơm A&E</title>
+  <meta name="description" content="Prototype hệ thống đặt suất ăn cho nhân viên A&E, sẵn sàng để deploy lên GitHub Pages." />
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --bg: #eef4ff;
+      --panel: rgba(255, 255, 255, 0.88);
+      --panel-strong: #ffffff;
+      --text: #10213a;
+      --muted: #5b6b86;
+      --line: rgba(22, 46, 87, 0.08);
+      --blue: #2563eb;
+      --blue-2: #1d4ed8;
+      --green: #16a34a;
+      --green-2: #0f9b41;
+      --shadow: 0 20px 60px rgba(23, 38, 68, 0.16);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 35%),
+        radial-gradient(circle at bottom right, rgba(22, 163, 74, 0.14), transparent 32%),
+        linear-gradient(180deg, #f4f8ff 0%, #edf3fb 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: linear-gradient(rgba(16, 33, 58, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 33, 58, 0.025) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none;
+      mask-image: linear-gradient(180deg, rgba(0,0,0,0.8), transparent 92%);
+    }
+
+    .app-shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px 14px 32px;
+    }
+
+    .frame {
+      width: min(100%, 420px);
+      position: relative;
+    }
+
+    .card {
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .top-accent {
+      height: 6px;
+      background: linear-gradient(90deg, var(--blue), #60a5fa 55%, var(--green));
+    }
+
+    .screen {
+      display: none;
+      animation: fadeIn 240ms ease-out;
+    }
+
+    .screen.is-active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-card {
+      padding: 22px 18px 18px;
+    }
+
+    .brand {
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .brand-badge {
+      width: 42px;
+      height: 42px;
+      margin: 0 auto 8px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #dbeafe, #dcfce7);
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
+      font-size: 22px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 0.98;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      color: #1d4ed8;
+      text-transform: uppercase;
+    }
+
+    .brand h1 span {
+      display: block;
+      font-size: 26px;
+      color: #0f172a;
+      margin-top: 3px;
+    }
+
+    .subtitle {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .field {
+      margin-top: 14px;
+    }
+
+    .field label {
+      display: block;
+      margin: 0 0 7px 2px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: #8190a8;
+    }
+
+    .input {
+      width: 100%;
+      border: 1px solid rgba(37, 99, 235, 0.08);
+      background: rgba(239, 246, 255, 0.95);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 15px 16px;
+      font-size: 15px;
+      font-weight: 700;
+      outline: none;
+      transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    .input::placeholder { color: #8b9ab5; font-weight: 600; }
+
+    .input:focus {
+      border-color: rgba(37, 99, 235, 0.45);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.08);
+      background: #fff;
+    }
+
+    .button {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 15px 18px;
+      margin-top: 16px;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+      color: white;
+      cursor: pointer;
+      transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+    }
+
+    .button:hover { filter: brightness(1.02); }
+    .button:active { transform: translateY(1px) scale(0.995); }
+
+    .button-primary {
+      background: linear-gradient(180deg, var(--blue), var(--blue-2));
+      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.24);
+    }
+
+    .button-success {
+      background: linear-gradient(180deg, var(--green), var(--green-2));
+      box-shadow: 0 14px 28px rgba(22, 163, 74, 0.2);
+    }
+
+    .login-footnote {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .main-card {
+      padding: 14px;
+    }
+
+    .header-panel {
+      background: linear-gradient(180deg, #effaf1, #f8fff9);
+      border: 1px solid rgba(22, 163, 74, 0.08);
+      border-radius: 18px;
+      padding: 14px 14px 12px;
+      margin-bottom: 14px;
+    }
+
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .user-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #fff;
+      border: 1px solid rgba(22, 163, 74, 0.1);
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #166534;
+    }
+
+    .logout-btn {
+      border: 0;
+      background: transparent;
+      color: #dc2626;
+      font-weight: 900;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .employee-name {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.15;
+      color: #0f172a;
+    }
+
+    .employee-meta {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .banner {
+      margin: 12px 0 14px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(22, 163, 74, 0.08));
+      border: 1px dashed rgba(37, 99, 235, 0.16);
+      padding: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .stat {
+      background: rgba(255,255,255,0.78);
+      border: 1px solid rgba(15, 23, 42, 0.04);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    .stat small {
+      display: block;
+      color: #6b7280;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 5px;
+      font-size: 15px;
+      color: #0f172a;
+    }
+
+    .menu-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .menu-card {
+      background: var(--panel-strong);
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      padding: 12px;
+    }
+
+    .day-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding: 4px 2px 8px;
+      border-bottom: 1px dashed rgba(37, 99, 235, 0.16);
+    }
+
+    .day-header-left {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .day-header-right {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .header-select {
+      min-width: 96px;
+      padding: 7px 9px;
+      font-size: 12px;
+      border-radius: 10px;
+    }
+
+    .day-date {
+      font-size: 13px;
+      color: #1d4ed8;
+      font-weight: 900;
+      letter-spacing: 0.01em;
+    }
+
+    .day-name {
+      font-size: 12px;
+      color: #0f172a;
+      font-weight: 800;
+    }
+
+    .day-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .field-grid {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .field-grid.two-col {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .field-grid.one-col {
+      grid-template-columns: 1fr;
+    }
+
+    .input-group {
+      background: #f8fbff;
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      border-radius: 12px;
+      padding: 8px;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 10px;
+      font-weight: 800;
+      color: #64748b;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin: 0 0 5px;
+    }
+
+    .select-field {
+      width: 100%;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      background: #fff;
+      color: #0f172a;
+      border-radius: 12px;
+      padding: 9px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      appearance: none;
+    }
+
+    .select-field:disabled {
+      background: #eef2f7;
+      color: #93a0b3;
+      cursor: not-allowed;
+    }
+
+    .sticky-footer {
+      position: sticky;
+      bottom: 0;
+      padding-top: 12px;
+      background: linear-gradient(180deg, rgba(238,244,255,0), rgba(238,244,255,0.95) 18%, rgba(238,244,255,1));
+      margin-top: 14px;
+    }
+
+    .busy-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 60;
+      backdrop-filter: blur(2px);
+    }
+
+    .busy-overlay.show {
+      display: flex;
+    }
+
+    .busy-card {
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      padding: 16px 18px;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #dbeafe;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%) translateY(10px);
+      background: rgba(15, 23, 42, 0.92);
+      color: #fff;
+      padding: 12px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease, transform 180ms ease;
+      box-shadow: 0 14px 36px rgba(15, 23, 42, 0.26);
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (max-width: 420px) {
+      .app-shell { padding-left: 10px; padding-right: 10px; }
+      .brand h1 { font-size: 28px; }
+      .brand h1 span { font-size: 24px; }
+      .day-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+      .field-grid.two-col { grid-template-columns: 1fr; }
+      .banner { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <div class="frame">
+      <section id="loginScreen" class="screen is-active card">
+        <div class="top-accent"></div>
+        <div class="login-card">
+          <div class="brand">
+            <div class="brand-badge">🥗</div>
+            <h1>HỆ THỐNG ĐẶT CƠM <span>A&E</span></h1>
+            <p class="subtitle">Đăng nhập bằng mã nhân viên để đặt suất ăn theo ca làm việc.</p>
+          </div>
+
+          <div class="field">
+            <label for="employeeCode">MÃ SỐ NHÂN VIÊN</label>
+            <input id="employeeCode" class="input" type="text" placeholder="Ví dụ: AE0791" autocomplete="off" />
+          </div>
+
+          <button id="loginButton" class="button button-primary" type="button">XÁC NHẬN ĐĂNG NHẬP</button>
+
+          <div id="loginHint" class="login-footnote">Đang nạp dữ liệu Excel...</div>
+        </div>
+      </section>
+
+      <section id="homeScreen" class="screen card">
+        <div class="top-accent"></div>
+        <div class="main-card">
+          <div class="header-panel">
+            <div class="header-top">
+              <div class="user-chip">NHÂN VIÊN</div>
+              <button id="logoutButton" class="logout-btn" type="button">ĐĂNG XUẤT</button>
+            </div>
+            <h2 id="employeeName" class="employee-name">Mary Nguyen (Warehouse)</h2>
+            <div id="employeeCodeLabel" class="employee-meta">Mã nhân viên: AE0791</div>
+          </div>
+
+          <div class="banner">
+            <div class="stat">
+              <small>Trạng thái</small>
+              <strong id="statusLabel">Sẵn sàng đặt suất ăn</strong>
+            </div>
+            <div class="stat">
+              <small>Tuần đăng ký</small>
+              <strong id="weekLabel">...</strong>
+            </div>
+          </div>
+          <div id="menuStack" class="menu-stack"></div>
+
+          <div class="sticky-footer">
+            <button id="submitButton" class="button button-success" type="button">Đăng ký</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div id="toast" class="toast"></div>
+  <div id="busyOverlay" class="busy-overlay">
+    <div class="busy-card">
+      <span class="spinner"></span>
+      <span>Đang xử lý đăng ký...</span>
+    </div>
+  </div>
+
+  <script>
+    const DAY_NAMES = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+    const API_BASE_URL = "https://script.google.com/macros/s/AKfycbzPqP6KNzH49fJ6eKGYOTC4dHxXIBAtP7SNJI_hQ81u8bHqZjfnHyKoIMpWy3KHb6-0BA/exec";
+
+    const state = {
+      currentEmployee: null,
+      days: [],
+      dayEntries: {},
+      registrationWindow: null
+    };
+
+    const loginScreen = document.getElementById("loginScreen");
+    const homeScreen = document.getElementById("homeScreen");
+    const employeeCodeInput = document.getElementById("employeeCode");
+    const employeeName = document.getElementById("employeeName");
+    const employeeCodeLabel = document.getElementById("employeeCodeLabel");
+    const loginHint = document.getElementById("loginHint");
+    const menuStack = document.getElementById("menuStack");
+    const toast = document.getElementById("toast");
+    const loginButton = document.getElementById("loginButton");
+    const logoutButton = document.getElementById("logoutButton");
+    const submitButton = document.getElementById("submitButton");
+    const weekLabel = document.getElementById("weekLabel");
+    const busyOverlay = document.getElementById("busyOverlay");
+
+    const workbookState = {
+      ready: false,
+      shifts: [],
+      meals: [],
+      menus: [],
+      udc: [],
+      ordered: []
+    };
+
+    function normalizeText(value) {
+      return String(value ?? "").trim();
+    }
+
+    function normalizeCode(value) {
+      return normalizeText(value).toUpperCase();
+    }
+
+    function formatDate(value) {
+      const day = String(value.getDate()).padStart(2, "0");
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      return `${day}/${month}`;
+    }
+
+    function dateKey(value) {
+      const day = String(value.getDate()).padStart(2, "0");
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      const year = String(value.getFullYear());
+      return `${year}-${month}-${day}`;
+    }
+
+    function getNextMonday(baseDate = new Date()) {
+      const currentDay = baseDate.getDay();
+      const daysUntilNextMonday = currentDay === 1 ? 7 : (8 - currentDay) % 7 || 7;
+      const nextMonday = new Date(baseDate);
+      nextMonday.setHours(0, 0, 0, 0);
+      nextMonday.setDate(baseDate.getDate() + daysUntilNextMonday);
+      return nextMonday;
+    }
+
+    function getISOWeekYear(dateValue) {
+      const date = new Date(Date.UTC(dateValue.getFullYear(), dateValue.getMonth(), dateValue.getDate()));
+      const dayNum = date.getUTCDay() || 7;
+      date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+      const isoYear = date.getUTCFullYear();
+      const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+      const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+      return { week, year: isoYear };
+    }
+
+    function initNextWeekDays() {
+      const monday = getNextMonday();
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      weekLabel.textContent = `${formatDate(monday)} - ${formatDate(sunday)}`;
+      state.registrationWindow = {
+        monday,
+        sunday,
+        ...getISOWeekYear(monday)
+      };
+
+      state.days = Array.from({ length: 7 }, (_, index) => {
+        const current = new Date(monday);
+        current.setDate(monday.getDate() + index);
+        return {
+          key: dateKey(current),
+          date: formatDate(current),
+          dayName: DAY_NAMES[current.getDay()]
+        };
+      });
+    }
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(showToast._timer);
+      showToast._timer = window.setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function setBusy(isBusy) {
+      busyOverlay.classList.toggle("show", isBusy);
+      submitButton.disabled = isBusy;
+      loginButton.disabled = isBusy;
+    }
+
+    function setView(view) {
+      loginScreen.classList.toggle("is-active", view === "login");
+      homeScreen.classList.toggle("is-active", view === "home");
+    }
+
+    function apiUrl(action, params = {}) {
+      const url = new URL(API_BASE_URL);
+      url.searchParams.set("action", action);
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          url.searchParams.set(key, value);
+        }
+      });
+      return url.toString();
+    }
+
+    async function apiGet(action, params = {}) {
+      const response = await fetch(apiUrl(action, params));
+      if (!response.ok) {
+        throw new Error(`API GET ${action} failed: ${response.status}`);
+      }
+      return response.json();
+    }
+
+    async function apiPost(action, payload = {}) {
+      const response = await fetch(apiUrl(action), {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        throw new Error(`API POST ${action} failed: ${response.status}`);
+      }
+      return response.json();
+    }
+
+    function getMealsForShift(shiftCode, overtimeOnly) {
+      if (!shiftCode) return [];
+
+      const mealCodeSet = workbookState.udc
+        .filter((row) => row.udcode === "SHM" && row.shcode === shiftCode)
+        .map((row) => row.mlcode)
+        .filter(Boolean);
+
+      const uniqueMealCodes = [...new Set(mealCodeSet)];
+      const mealByCode = new Map(workbookState.meals.map((item) => [item.code, item]));
+      return uniqueMealCodes
+        .map((code) => mealByCode.get(code))
+        .filter((meal) => meal && meal.isOvertime === overtimeOnly);
+    }
+
+    function getMenusForMeal(mealCode) {
+      if (!mealCode) return [];
+
+      const menuCodes = workbookState.udc
+        .filter((row) => row.udcode === "MEM" && row.mlcode === mealCode)
+        .map((row) => row.mncode)
+        .filter(Boolean);
+
+      const menuByCode = new Map(workbookState.menus.map((item) => [item.code, item]));
+      return [...new Set(menuCodes)]
+        .map((code) => menuByCode.get(code))
+        .filter(Boolean);
+    }
+
+    function ensureDayEntry(dayKey) {
+      if (state.dayEntries[dayKey]) return state.dayEntries[dayKey];
+      state.dayEntries[dayKey] = {
+        shiftCode: "",
+        mealCode: "",
+        menuCode: "",
+        overtime: "N",
+        overtimeMealCode: "",
+        dayOff: "N"
+      };
+      return state.dayEntries[dayKey];
+    }
+
+    function resetDaySelections(entry) {
+      entry.shiftCode = "";
+      entry.mealCode = "";
+      entry.menuCode = "";
+      entry.overtime = "";
+      entry.overtimeMealCode = "";
+    }
+
+    function applyDefaultDaySelections(entry) {
+      entry.shiftCode = "";
+      entry.mealCode = "";
+      entry.menuCode = "";
+      entry.overtime = "N";
+      entry.overtimeMealCode = "";
+    }
+
+    function optionsHtml(items, selectedValue, placeholderText) {
+      const start = placeholderText ? `<option value="">${placeholderText}</option>` : "";
+      const optionMarkup = items
+        .map((item) => {
+          const isSelected = item.code === selectedValue ? " selected" : "";
+          return `<option value="${item.code}"${isSelected}>${item.code} - ${item.name}</option>`;
+        })
+        .join("");
+      return `${start}${optionMarkup}`;
+    }
+
+    function renderDayCard(day) {
+      const entry = ensureDayEntry(day.key);
+      const isDayOff = entry.dayOff === "Y";
+      const hasShift = Boolean(entry.shiftCode);
+      const hasMeal = Boolean(entry.mealCode);
+      const shiftOptions = optionsHtml(workbookState.shifts, entry.shiftCode, "Chọn ca");
+      const mainMeals = getMealsForShift(entry.shiftCode, false);
+      if (!mainMeals.some((item) => item.code === entry.mealCode)) entry.mealCode = "";
+
+      const menus = getMenusForMeal(entry.mealCode);
+      if (!menus.some((item) => item.code === entry.menuCode)) entry.menuCode = "";
+
+      const overtimeMeals = getMealsForShift(entry.shiftCode, true);
+      if (!overtimeMeals.some((item) => item.code === entry.overtimeMealCode)) entry.overtimeMealCode = "";
+
+      const mealOptions = optionsHtml(mainMeals, entry.mealCode, "Chọn bữa chính");
+      const menuOptions = optionsHtml(menus, entry.menuCode, "Chọn món ăn");
+      const overtimeMealOptions = optionsHtml(overtimeMeals, entry.overtimeMealCode, "Chọn bữa làm thêm");
+      const overtimeDisabled = isDayOff || entry.overtime !== "Y";
+
+      return `
+        <article class="menu-card">
+          <div class="day-header">
+            <div class="day-header-left">
+              <div class="day-date">${day.date}</div>
+              <div class="day-name">${day.dayName}</div>
+            </div>
+            <div class="day-header-right">
+              <label class="input-label" style="margin: 0;">Ngày nghỉ</label>
+              <select class="select-field header-select" data-day="${day.key}" data-field="dayOff">
+                <option value="N"${entry.dayOff === "N" ? " selected" : ""}>Không</option>
+                <option value="Y"${entry.dayOff === "Y" ? " selected" : ""}>Có</option>
+              </select>
+            </div>
+          </div>
+          <div class="day-content">
+            <div class="field-grid two-col">
+              <div class="input-group">
+                <label class="input-label">Ca làm việc</label>
+                <select class="select-field" data-day="${day.key}" data-field="shiftCode"${isDayOff ? " disabled" : ""}>${shiftOptions}</select>
+              </div>
+              <div class="input-group">
+                <label class="input-label">Bữa ăn chính</label>
+                <select class="select-field" data-day="${day.key}" data-field="mealCode"${(isDayOff || !hasShift) ? " disabled" : ""}>${mealOptions}</select>
+              </div>
+            </div>
+            <div class="field-grid one-col">
+              <div class="input-group">
+                <label class="input-label">Món ăn</label>
+                <select class="select-field" data-day="${day.key}" data-field="menuCode"${(isDayOff || !hasMeal) ? " disabled" : ""}>${menuOptions}</select>
+              </div>
+            </div>
+            <div class="field-grid two-col">
+              <div class="input-group">
+                <label class="input-label">Đăng ký bữa làm thêm</label>
+                <select class="select-field" data-day="${day.key}" data-field="overtime"${isDayOff ? " disabled" : ""}>
+                  <option value=""${entry.overtime === "" ? " selected" : ""}>Chọn</option>
+                  <option value="N"${entry.overtime === "N" ? " selected" : ""}>Không</option>
+                  <option value="Y"${entry.overtime === "Y" ? " selected" : ""}>Có</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label class="input-label">Bữa ăn làm thêm</label>
+                <select class="select-field" data-day="${day.key}" data-field="overtimeMealCode"${overtimeDisabled ? " disabled" : ""}>${overtimeMealOptions}</select>
+              </div>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function buildMenuCards() {
+      menuStack.innerHTML = state.days.map((day) => renderDayCard(day)).join("");
+    }
+
+    function onFieldChange(dayKey, field, value) {
+      const entry = ensureDayEntry(dayKey);
+      entry[field] = value;
+
+      if (field === "dayOff") {
+        if (entry.dayOff === "Y") {
+          resetDaySelections(entry);
+        } else {
+          applyDefaultDaySelections(entry);
+        }
+        buildMenuCards();
+        return;
+      }
+
+      if (field === "shiftCode") {
+        entry.mealCode = "";
+        entry.menuCode = "";
+        entry.overtimeMealCode = "";
+      }
+
+      if (field === "mealCode") {
+        entry.menuCode = "";
+      }
+
+      if (field === "overtime" && entry.overtime !== "Y") {
+        entry.overtime = "N";
+      }
+
+      buildMenuCards();
+    }
+
+    function validateRegistrationEntries() {
+      const issues = [];
+      let workingDayCount = 0;
+
+      state.days.forEach((day) => {
+        const entry = ensureDayEntry(day.key);
+        if (entry.dayOff === "Y") return;
+
+        workingDayCount += 1;
+        const missing = [];
+        if (!entry.shiftCode) missing.push("ca làm việc");
+        if (!entry.mealCode) missing.push("bữa ăn chính");
+        if (!entry.menuCode) missing.push("món ăn");
+        if (entry.overtime === "Y" && !entry.overtimeMealCode) missing.push("bữa ăn làm thêm");
+        if (missing.length) {
+          issues.push(`${day.dayName} (${day.date}): thiếu ${missing.join(", ")}`);
+        }
+      });
+
+      if (workingDayCount === 0) {
+        return { ok: false, message: "Không có ngày làm việc để đăng ký." };
+      }
+      if (issues.length > 0) {
+        return { ok: false, message: issues.join("\n") };
+      }
+      return { ok: true, message: "" };
+    }
+
+    async function submitRegistration() {
+      if (!state.currentEmployee) return;
+
+      const validation = validateRegistrationEntries();
+      if (!validation.ok) {
+        alert(validation.message);
+        return;
+      }
+
+      const confirmed = window.confirm("Bạn muốn đăng ký chứ?");
+      if (!confirmed) return;
+
+      const payload = {
+        action: "submit",
+        epcode: state.currentEmployee.code,
+        week: state.registrationWindow.week,
+        year: state.registrationWindow.year,
+        entries: state.days.map((day) => ({
+          orderDate: day.key,
+          ...ensureDayEntry(day.key)
+        }))
+      };
+
+      try {
+        setBusy(true);
+        const result = await apiPost("submit", payload);
+        if (!result.success) {
+          alert(result.message || "Đăng ký không thành công.");
+          return;
+        }
+        alert("Đăng ký thành công.");
+        logout();
+      } catch (error) {
+        console.error(error);
+        alert("Có lỗi khi gửi đăng ký lên server.");
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function login(code) {
+      const normalizedCode = normalizeCode(code);
+      if (normalizedCode.length < 6) {
+        showToast("Mã nhân viên phải có ít nhất 6 ký tự");
+        employeeCodeInput.focus();
+        return false;
+      }
+
+      if (!workbookState.ready) {
+        showToast("Đang nạp dữ liệu, vui lòng chờ");
+        return false;
+      }
+
+      try {
+        setBusy(true);
+        const result = await apiGet("login", {
+          epcode: normalizedCode,
+          week: state.registrationWindow.week,
+          year: state.registrationWindow.year
+        });
+        if (!result.success) {
+          showToast(result.message || "Sai mã nhân viên");
+          return false;
+        }
+
+        if (result.alreadyRegistered) {
+          localStorage.removeItem("mealBookingEmployeeCode");
+          alert("Bạn đã đăng ký cho tuần kế tiếp rồi.");
+          return false;
+        }
+
+        state.currentEmployee = result.employee;
+        state.dayEntries = {};
+        employeeName.textContent = `${result.employee.name} (${result.employee.dpname || result.employee.dpcode})`;
+        employeeCodeLabel.textContent = `Mã nhân viên: ${result.employee.code}`;
+        localStorage.setItem("mealBookingEmployeeCode", result.employee.code);
+        buildMenuCards();
+        setView("home");
+        showToast(`Xin chào ${result.employee.name}`);
+        return true;
+      } catch (error) {
+        console.error(error);
+        showToast("Không kết nối được API");
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function logout() {
+      state.currentEmployee = null;
+      localStorage.removeItem("mealBookingEmployeeCode");
+      employeeCodeInput.value = "";
+      setView("login");
+      showToast("Đã đăng xuất");
+    }
+
+    async function loadBootstrapData() {
+      if (!API_BASE_URL || API_BASE_URL.includes("YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL")) {
+        loginHint.textContent = "Chưa cấu hình API URL. Hãy cập nhật API_BASE_URL trong file index.html";
+        return;
+      }
+
+      loginButton.disabled = true;
+      loginButton.textContent = "ĐANG NẠP DỮ LIỆU...";
+      try {
+        const result = await apiGet("bootstrap");
+        if (!result.success) {
+          throw new Error(result.message || "Bootstrap failed");
+        }
+
+        workbookState.shifts = result.shifts || [];
+        workbookState.meals = result.meals || [];
+        workbookState.menus = result.menus || [];
+        workbookState.udc = result.udc || [];
+        workbookState.ordered = result.ordered || [];
+        workbookState.ready = true;
+
+        loginHint.textContent = "Đã nạp dữ liệu từ Google Sheets.";
+      } catch (error) {
+        workbookState.ready = false;
+        loginHint.textContent = "Không đọc được dữ liệu từ API Google Apps Script.";
+        console.error(error);
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = "XÁC NHẬN ĐĂNG NHẬP";
+      }
+    }
+
+    loginButton.addEventListener("click", () => {
+      const code = employeeCodeInput.value.trim();
+      if (!code) {
+        showToast("Nhập mã nhân viên trước");
+        employeeCodeInput.focus();
+        return;
+      }
+      login(code);
+    });
+
+    employeeCodeInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        loginButton.click();
+      }
+    });
+
+    menuStack.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLSelectElement)) return;
+      const dayKey = target.dataset.day;
+      const field = target.dataset.field;
+      if (!dayKey || !field) return;
+      onFieldChange(dayKey, field, target.value);
+    });
+
+    logoutButton.addEventListener("click", logout);
+    submitButton.addEventListener("click", submitRegistration);
+
+    initNextWeekDays();
+    const savedCode = localStorage.getItem("mealBookingEmployeeCode");
+    setView("login");
+    loadBootstrapData().then(() => {
+      if (savedCode && workbookState.ready) {
+        login(savedCode);
+      }
+    });
+  </script>
+</body>
+</html>
