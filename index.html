@@ -263,7 +263,7 @@
       border: 1px dashed rgba(37, 99, 235, 0.16);
       padding: 12px;
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 10px;
     }
 
@@ -615,7 +615,7 @@
       }
       .field-grid.two-col { grid-template-columns: 1fr; }
       .banner { grid-template-columns: 1fr; }
-      .day-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .day-picker { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     }
   </style>
 </head>
@@ -655,10 +655,6 @@
           </div>
 
           <div class="banner">
-            <div class="stat">
-              <small>Trạng thái</small>
-              <strong id="statusLabel">Sẵn sàng đặt suất ăn</strong>
-            </div>
             <div class="stat">
               <small>Tuần đăng ký</small>
               <strong id="weekLabel">...</strong>
