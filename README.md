@@ -1,85 +1,85 @@
-# He thong Dat Com A&E
+# Hệ thống Đặt Cơm A&E
 
-Web app dat suat an cho nhan vien A&E, toi uu cho thao tac nhanh tren dien thoai va de trien khai cong khai qua GitHub Pages.
+Web app đặt suất ăn cho nhân viên A&E, tối ưu thao tác nhanh trên điện thoại và dễ triển khai công khai qua GitHub Pages.
 
-## Tong quan
+## Tổng quan
 
-Du an giup nhan vien dang nhap bang ma nhan vien, chon suat an theo tung ngay trong tuan tiep theo, gui dang ky len Google Sheets thong qua Google Apps Script API.
+Dự án giúp nhân viên đăng nhập bằng mã nhân viên, chọn suất ăn theo từng ngày trong tuần kế tiếp, rồi gửi đăng ký lên Google Sheets thông qua Google Apps Script API.
 
-- Frontend: HTML/CSS/JavaScript thuần, responsive, tai nhanh
+- Frontend: HTML/CSS/JavaScript thuần, responsive, tải nhanh
 - Backend: Google Apps Script (Web App API)
-- Du lieu: Google Sheets (de van hanh, de kiem tra)
+- Dữ liệu: Google Sheets (dễ vận hành, dễ kiểm tra)
 - Hosting: GitHub Pages
 
-## Diem hap dan
+## Điểm hấp dẫn
 
-- Truy cap truc tiep bang trinh duyet, khong can cai app
-- Giao dien mobile-first, thao tac ro rang theo tung ngay
-- Luong nhap lieu co rang buoc thong minh (ca -> bua -> mon)
-- UX toi gian: dang nhap nhanh, toast thong bao, trang thai xu ly ro rang
-- Co the mo rong de quan tri, bao cao, thong ke
+- Truy cập trực tiếp bằng trình duyệt, không cần cài app
+- Giao diện mobile-first, thao tác rõ ràng theo từng ngày
+- Luồng nhập liệu có ràng buộc thông minh (ca -> bữa -> món)
+- UX tối giản: đăng nhập nhanh, thông báo toast, trạng thái xử lý rõ ràng
+- Có thể mở rộng cho quản trị, báo cáo, thống kê
 
-## Chuc nang chinh
+## Chức năng chính
 
-1. Dang nhap bang ma nhan vien
-2. Hien thi khung dang ky cho tuan tiep theo
-3. Chon ngay nghi Co/Khong cho tung ngay
-4. Chon:
-   - Ca lam viec
-   - Bua an chinh
-   - Mon an
-   - Dang ky bua lam them (tuy chon)
-5. Kiem tra du lieu truoc khi gui dang ky
-6. Chan dang ky trung (da dang ky thi khong cho dang ky lai)
-7. Ghi du lieu don hang vao Google Sheets
+1. Đăng nhập bằng mã nhân viên
+2. Hiển thị khung đăng ký cho tuần kế tiếp
+3. Chọn ngày nghỉ Có/Không cho từng ngày
+4. Chọn:
+   - Ca làm việc
+   - Bữa ăn chính
+   - Món ăn
+   - Đăng ký bữa làm thêm (tùy chọn)
+5. Kiểm tra dữ liệu trước khi gửi đăng ký
+6. Chặn đăng ký trùng (đã đăng ký thì không cho đăng ký lại)
+7. Ghi dữ liệu đơn hàng vào Google Sheets
 
-## Loi ich mang lai
+## Lợi ích mang lại
 
-- Giam thao tac thu cong tren file roi rac
-- Chuan hoa du lieu dang ky suat an theo tuan
-- De truy vet, de doi soat, de tong hop
-- Trien khai nhanh, chi phi thap, de bao tri
-- Phu hop moi truong van hanh san xuat (can on dinh, de dung)
+- Giảm thao tác thủ công trên file rời rạc
+- Chuẩn hóa dữ liệu đăng ký suất ăn theo tuần
+- Dễ truy vết, dễ đối soát, dễ tổng hợp
+- Triển khai nhanh, chi phí thấp, dễ bảo trì
+- Phù hợp môi trường vận hành sản xuất (cần ổn định, dễ dùng)
 
-## Giao dien
+## Giao diện
 
-- Man hinh Login gon gang, tap trung vao mot hanh dong chinh
-- Man hinh Dat com theo the (card) cho tung ngay
-- Mau sac than thien, nhan dien ro trang thai
-- Thich ung tot tren mobile va desktop
+- Màn hình Login gọn gàng, tập trung vào một hành động chính
+- Màn hình Đặt cơm theo thẻ (card) cho từng ngày
+- Màu sắc thân thiện, nhận diện rõ trạng thái
+- Thích ứng tốt trên mobile và desktop
 
-## Cau truc du an
+## Cấu trúc dự án
 
-- index.html: giao dien + logic frontend
+- index.html: giao diện + logic frontend
 - google-apps-script/Code.gs: API backend cho bootstrap/login/submit
-- google-apps-script/README.md: huong dan setup Apps Script va deploy chi tiet
+- google-apps-script/README.md: hướng dẫn setup Apps Script và deploy chi tiết
 
-## Cach chay nhanh
+## Cách chạy nhanh
 
-1. Mo file index hoac deploy len GitHub Pages
-2. Cau hinh API_BASE_URL trong index.html tro den Web App URL cua Apps Script
-3. Dam bao Google Sheet du cac sheet du lieu: employees, udc, shifts, meals, menus, ordered, orders
+1. Mở file index hoặc deploy lên GitHub Pages
+2. Cấu hình API_BASE_URL trong index.html trỏ đến Web App URL của Apps Script
+3. Đảm bảo Google Sheet đủ các sheet dữ liệu: employees, udc, shifts, meals, menus, ordered, orders
 
 ## Deploy
 
-- GitHub Pages URL mac dinh:
+- GitHub Pages URL mặc định:
   - https://aevndyeing.github.io/mealbooking/
 
-Thong tin setup backend xem tai:
+Thông tin setup backend xem tại:
 - google-apps-script/README.md
 
-## Doi tuong su dung
+## Đối tượng sử dụng
 
-- Nhan vien dang ky suat an
-- Nguoi van hanh/quan tri theo doi ket qua dang ky
+- Nhân viên đăng ký suất ăn
+- Người vận hành/quản trị theo dõi kết quả đăng ký
 
-## Dinh huong mo rong
+## Định hướng mở rộng
 
-- Them man hinh admin quan tri menu/ca
-- Bao cao tong hop theo ngay, bo phan, ca
-- Tich hop thong bao nhac han dang ky
-- Phan quyen theo vai tro
+- Thêm màn hình admin quản trị menu/ca
+- Báo cáo tổng hợp theo ngày, bộ phận, ca
+- Tích hợp thông báo nhắc hạn đăng ký
+- Phân quyền theo vai trò
 
----
+## AI Assistance
 
-Neu ban muon, toi co the tiep tuc bo sung README theo huong "san pham doanh nghiep" voi anh giao dien, luong nghiep vu va roadmap theo quy.
+README này được soạn thảo với sự hỗ trợ của AI (GitHub Copilot), sau đó được rà soát và chỉnh sửa theo nhu cầu thực tế của dự án.
