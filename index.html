@@ -295,6 +295,138 @@
       gap: 10px;
     }
 
+    .day-picker {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .day-pill {
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 8px 6px;
+      text-align: center;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .day-pill small {
+      display: block;
+      margin-top: 2px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #64748b;
+    }
+
+    .day-pill.is-active {
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.22);
+      border-color: rgba(37, 99, 235, 0.55);
+    }
+
+    .day-pill.status-empty { background: #ffffff; }
+    .day-pill.status-complete { background: #dcfce7; border-color: rgba(22, 163, 74, 0.4); }
+    .day-pill.status-incomplete { background: #fef9c3; border-color: rgba(202, 138, 4, 0.35); }
+    .day-pill.status-off { background: #ffedd5; border-color: rgba(234, 88, 12, 0.35); }
+
+    .day-legend {
+      margin: 0 0 10px;
+      font-size: 11px;
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .day-picker {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .day-chip {
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      background: #fff;
+      border-radius: 12px;
+      padding: 8px 7px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+      color: #0f172a;
+    }
+
+    .day-chip.status-empty {
+      background: #fff;
+      border-color: rgba(15, 23, 42, 0.12);
+    }
+
+    .day-chip.status-complete {
+      background: #dcfce7;
+      border-color: rgba(22, 163, 74, 0.45);
+      color: #14532d;
+    }
+
+    .day-chip.status-partial {
+      background: #fee2e2;
+      border-color: rgba(220, 38, 38, 0.45);
+      color: #7f1d1d;
+    }
+
+    .day-chip.status-off {
+      background: #ffedd5;
+      border-color: rgba(249, 115, 22, 0.45);
+      color: #9a3412;
+    }
+
+    .day-chip.active {
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+      border-color: rgba(37, 99, 235, 0.6);
+    }
+
+    .summary-card {
+      margin-top: 10px;
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      padding: 10px;
+    }
+
+    .summary-title {
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 900;
+      color: #0f172a;
+    }
+
+    .summary-wrap {
+      overflow-x: auto;
+    }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    .summary-table th,
+    .summary-table td {
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+      padding: 7px 6px;
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+
+    .summary-table th {
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #64748b;
+    }
+
     .menu-card {
       background: var(--panel-strong);
       border-radius: 18px;
@@ -483,6 +615,7 @@
       }
       .field-grid.two-col { grid-template-columns: 1fr; }
       .banner { grid-template-columns: 1fr; }
+      .day-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>
@@ -531,6 +664,10 @@
               <strong id="weekLabel">...</strong>
             </div>
           </div>
+
+          <div id="dayPicker" class="day-picker"></div>
+          <p class="day-legend">Trạng thái ngày: trắng = chưa chọn, vàng = chọn thiếu, xanh = hoàn tất, cam = nghỉ.</p>
+
           <div id="menuStack" class="menu-stack"></div>
 
           <div class="sticky-footer">
@@ -557,7 +694,8 @@
       currentEmployee: null,
       days: [],
       dayEntries: {},
-      registrationWindow: null
+      registrationWindow: null,
+      activeDayKey: ""
     };
 
     const loginScreen = document.getElementById("loginScreen");
@@ -566,6 +704,7 @@
     const employeeName = document.getElementById("employeeName");
     const employeeCodeLabel = document.getElementById("employeeCodeLabel");
     const loginHint = document.getElementById("loginHint");
+    const dayPicker = document.getElementById("dayPicker");
     const menuStack = document.getElementById("menuStack");
     const toast = document.getElementById("toast");
     const loginButton = document.getElementById("loginButton");
@@ -643,6 +782,7 @@
           dayName: DAY_NAMES[current.getDay()]
         };
       });
+      state.activeDayKey = state.days[0]?.key || "";
     }
 
     function showToast(message) {
@@ -762,20 +902,69 @@
       return `${start}${optionMarkup}`;
     }
 
+    function isDayUntouched(entry) {
+      return entry.dayOff === "N"
+        && !entry.shiftCode
+        && !entry.mealCode
+        && !entry.menuCode
+        && !entry.overtimeMealCode;
+    }
+
+    function isDayComplete(entry) {
+      if (entry.dayOff === "Y") return true;
+      if (!entry.shiftCode || !entry.mealCode || !entry.menuCode) return false;
+      if (entry.overtime === "Y" && !entry.overtimeMealCode) return false;
+      return true;
+    }
+
+    function dayStatusClass(dayKey) {
+      const entry = ensureDayEntry(dayKey);
+      if (entry.dayOff === "Y") return "status-off";
+      if (isDayUntouched(entry)) return "status-empty";
+      if (isDayComplete(entry)) return "status-complete";
+      return "status-incomplete";
+    }
+
+    function renderDayPicker() {
+      dayPicker.innerHTML = state.days
+        .map((day) => {
+          const activeClass = day.key === state.activeDayKey ? " is-active" : "";
+          return `
+            <button type="button" class="day-pill ${dayStatusClass(day.key)}${activeClass}" data-day-picker="${day.key}">
+              ${day.dayName}
+              <small>${day.date}</small>
+            </button>
+          `;
+        })
+        .join("");
+    }
+
     function renderDayCard(day) {
       const entry = ensureDayEntry(day.key);
       const isDayOff = entry.dayOff === "Y";
+
+      if (!isDayOff && !entry.shiftCode && workbookState.shifts.length === 1) {
+        entry.shiftCode = workbookState.shifts[0].code;
+      }
+
       const hasShift = Boolean(entry.shiftCode);
-      const hasMeal = Boolean(entry.mealCode);
       const shiftOptions = optionsHtml(workbookState.shifts, entry.shiftCode, "Chọn ca");
       const mainMeals = getMealsForShift(entry.shiftCode, false);
       if (!mainMeals.some((item) => item.code === entry.mealCode)) entry.mealCode = "";
+      if (!isDayOff && hasShift && !entry.mealCode && mainMeals.length === 1) entry.mealCode = mainMeals[0].code;
+
+      const hasMeal = Boolean(entry.mealCode);
 
       const menus = getMenusForMeal(entry.mealCode);
       if (!menus.some((item) => item.code === entry.menuCode)) entry.menuCode = "";
+      if (!isDayOff && entry.mealCode && !entry.menuCode && menus.length === 1) entry.menuCode = menus[0].code;
 
       const overtimeMeals = getMealsForShift(entry.shiftCode, true);
+      if (entry.overtime !== "Y") entry.overtimeMealCode = "";
       if (!overtimeMeals.some((item) => item.code === entry.overtimeMealCode)) entry.overtimeMealCode = "";
+      if (!isDayOff && entry.overtime === "Y" && !entry.overtimeMealCode && overtimeMeals.length === 1) {
+        entry.overtimeMealCode = overtimeMeals[0].code;
+      }
 
       const mealOptions = optionsHtml(mainMeals, entry.mealCode, "Chọn bữa chính");
       const menuOptions = optionsHtml(menus, entry.menuCode, "Chọn món ăn");
@@ -834,7 +1023,16 @@
     }
 
     function buildMenuCards() {
-      menuStack.innerHTML = state.days.map((day) => renderDayCard(day)).join("");
+      const activeDay = state.days.find((day) => day.key === state.activeDayKey) || state.days[0];
+      if (!activeDay) {
+        dayPicker.innerHTML = "";
+        menuStack.innerHTML = "";
+        return;
+      }
+
+      state.activeDayKey = activeDay.key;
+      menuStack.innerHTML = renderDayCard(activeDay);
+      renderDayPicker();
     }
 
     function onFieldChange(dayKey, field, value) {
@@ -873,6 +1071,7 @@
       let workingDayCount = 0;
 
       state.days.forEach((day) => {
+        renderDayCard(day);
         const entry = ensureDayEntry(day.key);
         if (entry.dayOff === "Y") return;
 
@@ -969,6 +1168,7 @@
 
         state.currentEmployee = result.employee;
         state.dayEntries = {};
+        state.activeDayKey = state.days[0]?.key || "";
         employeeName.textContent = `${result.employee.name} (${result.employee.dpname || result.employee.dpcode})`;
         employeeCodeLabel.textContent = `Mã nhân viên: ${result.employee.code}`;
         localStorage.setItem("mealBookingEmployeeCode", result.employee.code);
@@ -1046,6 +1246,15 @@
       const field = target.dataset.field;
       if (!dayKey || !field) return;
       onFieldChange(dayKey, field, target.value);
+    });
+
+    dayPicker.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const button = target.closest("[data-day-picker]");
+      if (!button) return;
+      state.activeDayKey = button.getAttribute("data-day-picker") || state.activeDayKey;
+      buildMenuCards();
     });
 
     logoutButton.addEventListener("click", logout);
