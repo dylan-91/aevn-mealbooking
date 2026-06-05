@@ -53,7 +53,7 @@ git init
 git branch -M main
 git add .
 git commit -m "Initial meal booking site"
-git remote add origin https://github.com/YOUR_USERNAME/mael-booking-github.git
+git remote add origin https://github.com/aevndyeing/mealbooking.git
 git push -u origin main
 ```
 
@@ -81,7 +81,7 @@ Sau khi push code lên GitHub:
 Sau vài phút, web public thường có dạng:
 
 ```text
-https://YOUR_USERNAME.github.io/mael-booking-github/
+https://aevndyeing.github.io/mealbooking/
 ```
 
 ## 9) Checklist Before Public Release
@@ -120,3 +120,41 @@ Nếu user không đăng nhập được hoặc không ghi đơn được:
 3. Kiểm tra `SPREADSHEET_ID`.
 4. Kiểm tra Apps Script đã redeploy chưa.
 5. Kiểm tra cấu trúc cột trong Google Sheet có đúng như thiết kế không.
+
+## 12) Cannot Access Page After Deploy (404)
+
+Nếu URL GitHub Pages không truy cập được sau deploy, kiểm tra theo thứ tự sau:
+
+1. Xác nhận repository tồn tại và truy cập được:
+  - Mở `https://github.com/YOUR_USERNAME/YOUR_REPO`
+  - Nếu báo `404`, repo chưa tồn tại, sai tên repo, hoặc tài khoản hiện tại không có quyền.
+
+2. Xác nhận đã push code thành công lên đúng repo:
+
+```bash
+cd "/d/MyProjects/SQL STATEMENTS/HR/MealBooking/mael-booking-github"
+git remote -v
+git push -u origin main
+```
+
+Lưu ý khi dùng terminal `bash` trên Windows:
+- Không dùng: `cd D:\...`
+- Dùng: `cd "/d/..."`
+
+3. Vào `Settings -> Pages` của repo và kiểm tra:
+  - Source: `Deploy from a branch`
+  - Branch: `main`
+  - Folder: `/ (root)`
+  - Bấm `Save`
+
+4. Chờ GitHub build xong (1-5 phút), kiểm tra tab `Actions` nếu build fail.
+
+5. Dùng đúng URL theo tên repo:
+
+```text
+https://YOUR_USERNAME.github.io/YOUR_REPO/
+```
+
+Ví dụ:
+- repo `meal-booking` -> `https://YOUR_USERNAME.github.io/meal-booking/`
+- repo `mael-booking-github` -> `https://YOUR_USERNAME.github.io/mael-booking-github/`
