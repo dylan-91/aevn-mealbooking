@@ -79,7 +79,3 @@ Thông tin setup backend xem tại:
 - Báo cáo tổng hợp theo ngày, bộ phận, ca
 - Tích hợp thông báo nhắc hạn đăng ký
 - Phân quyền theo vai trò
-
-## AI Assistance
-
-README này được soạn thảo với sự hỗ trợ của AI (GitHub Copilot), sau đó được rà soát và chỉnh sửa theo nhu cầu thực tế của dự án.
