@@ -646,7 +646,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "2026-06-07-2";
+    const APP_VERSION = "2026-06-07-3";
     const DAY_NAMES = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
     const API_BASE_URL = "https://script.google.com/macros/s/AKfycbyXNz4z2OaeRViCB4di99DBvcT-9hSCnzjq5_I1avZWyZyVDgs0oH9IVMQq_tzeJlRo/exec";
 
@@ -1085,7 +1085,20 @@
       buildMenuCards();
     }
 
+    function syncVisibleDayFormToState() {
+      const selects = menuStack.querySelectorAll("select[data-day][data-field]");
+      selects.forEach((selectEl) => {
+        if (!(selectEl instanceof HTMLSelectElement)) return;
+        const dayKey = selectEl.dataset.day;
+        const field = selectEl.dataset.field;
+        if (!dayKey || !field) return;
+        const entry = ensureDayEntry(dayKey);
+        entry[field] = selectEl.value;
+      });
+    }
+
     function validateRegistrationEntries() {
+      syncVisibleDayFormToState();
       const issues = [];
       let workingDayCount = 0;
 
@@ -1117,6 +1130,8 @@
 
     async function submitRegistration() {
       if (!state.currentEmployee) return;
+
+      syncVisibleDayFormToState();
 
       const validation = validateRegistrationEntries();
       if (!validation.ok) {
@@ -1276,6 +1291,15 @@
     });
 
     menuStack.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLSelectElement)) return;
+      const dayKey = target.dataset.day;
+      const field = target.dataset.field;
+      if (!dayKey || !field) return;
+      onFieldChange(dayKey, field, target.value);
+    });
+
+    menuStack.addEventListener("input", (event) => {
       const target = event.target;
       if (!(target instanceof HTMLSelectElement)) return;
       const dayKey = target.dataset.day;
