@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Hệ Thống Đặt Cơm A&E</title>
   <meta name="description" content="Prototype hệ thống đặt suất ăn cho nhân viên A&E, sẵn sàng để deploy lên GitHub Pages." />
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -643,8 +646,21 @@
   </div>
 
   <script>
+    const APP_VERSION = "2026-06-06-1";
     const DAY_NAMES = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
     const API_BASE_URL = "https://script.google.com/macros/s/AKfycbx8cZel4SYyJiBdA2L2jeusf_uRlmosNO_BnCmFRTUsS_izcfrhKoYbRCuCvtlbSDstYQ/exec";
+
+    // Force a versioned URL so users don't stay on stale HTML after deploy.
+    (function enforceVersionedUrl() {
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get("v") === APP_VERSION) return;
+        url.searchParams.set("v", APP_VERSION);
+        window.location.replace(url.toString());
+      } catch (error) {
+        console.warn("Versioned URL check failed", error);
+      }
+    })();
 
     const state = {
       currentEmployee: null,
@@ -770,7 +786,9 @@
     }
 
     async function apiGet(action, params = {}) {
-      const response = await fetch(apiUrl(action, params));
+      const response = await fetch(apiUrl(action, { ...params, _t: Date.now() }), {
+        cache: "no-store"
+      });
       if (!response.ok) {
         throw new Error(`API GET ${action} failed: ${response.status}`);
       }
@@ -778,8 +796,9 @@
     }
 
     async function apiPost(action, payload = {}) {
-      const response = await fetch(apiUrl(action), {
+      const response = await fetch(apiUrl(action, { _t: Date.now() }), {
         method: "POST",
+        cache: "no-store",
         body: JSON.stringify(payload)
       });
       if (!response.ok) {
