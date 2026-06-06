@@ -646,7 +646,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "2026-06-07-4";
+    const APP_VERSION = "2026-06-07-5";
     const DAY_NAMES = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
     const API_BASE_URL = "https://script.google.com/macros/s/AKfycbyXNz4z2OaeRViCB4di99DBvcT-9hSCnzjq5_I1avZWyZyVDgs0oH9IVMQq_tzeJlRo/exec";
 
@@ -1156,11 +1156,29 @@
       try {
         setBusy(true);
         const result = await apiPost("submit", payload);
+        const debug = result && result.debug ? result.debug : null;
+        if (debug) {
+          window.__lastSubmitDebug = debug;
+          console.log("[SUBMIT DEBUG] receivedEntriesPreview", debug.receivedEntriesPreview || []);
+          console.log("[SUBMIT DEBUG] writtenRowsPreview", debug.writtenRowsPreview || []);
+          if (typeof console.table === "function") {
+            console.table(debug.receivedEntriesPreview || []);
+            console.table(debug.writtenRowsPreview || []);
+          }
+        }
+
         if (!result.success) {
-          alert(result.message || "Đăng ký không thành công.");
+          const debugLines = debug && Array.isArray(debug.writtenRowsPreview)
+            ? debug.writtenRowsPreview.map((row) => `${row.orderDate} [${row.rowType}] ${row.mlcode}/${row.mncode}`).join("\n")
+            : "";
+          alert(`${result.message || "Đăng ký không thành công."}${debugLines ? `\n\nDebug rows:\n${debugLines}` : ""}`);
           return;
         }
-        alert("Đăng ký thành công.");
+        const writtenPreview = debug && Array.isArray(debug.writtenRowsPreview)
+          ? debug.writtenRowsPreview.map((row) => `${row.orderDate} [${row.rowType}] ${row.mlcode}/${row.mncode}`)
+          : [];
+        const previewText = writtenPreview.length ? `\n\nDebug rows:\n${writtenPreview.join("\n")}` : "";
+        alert(`Đăng ký thành công.${previewText}`);
         logout();
       } catch (error) {
         console.error(error);

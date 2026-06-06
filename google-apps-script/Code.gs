@@ -196,6 +196,8 @@ function handleSubmit(payload) {
 
   const nowText = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   const orderSheetRows = [];
+  const receivedEntriesPreview = [];
+  const writtenRowsPreview = [];
   const issues = [];
 
   entries.forEach((entry) => {
@@ -209,6 +211,17 @@ function handleSubmit(payload) {
     const overtime = normalizeCode(entry.overtime);
     const overtimeMealCode = normalizeCode(entry.overtimeMealCode);
     const overtimeMenuCode = normalizeCode(entry.overtimeMenuCode);
+
+    receivedEntriesPreview.push({
+      orderDate: orderDate,
+      dayOff: dayOff ? 'Y' : 'N',
+      shiftCode: shiftCode,
+      mealCode: mealCode,
+      menuCode: menuCode,
+      overtime: overtime,
+      overtimeMealCode: overtimeMealCode,
+      overtimeMenuCode: overtimeMenuCode
+    });
 
     const shift = shiftMap[shiftCode];
     const meal = mealMap[mealCode];
@@ -253,6 +266,14 @@ function handleSubmit(payload) {
       mlev04: meal ? meal.mlev04 : '',
       mncode: menuCode,
       mnname: menu ? menu.name : ''
+    });
+
+    writtenRowsPreview.push({
+      orderDate: orderDate,
+      rowType: 'MAIN',
+      shcode: shiftCode,
+      mlcode: mealCode,
+      mncode: menuCode
     });
 
     if (overtime === 'Y' && (!overtimeMealCode || !overtimeMenuCode)) {
@@ -303,13 +324,25 @@ function handleSubmit(payload) {
         mncode: overtimeMenuCode,
         mnname: overtimeMenu ? overtimeMenu.name : ''
       });
+
+      writtenRowsPreview.push({
+        orderDate: orderDate,
+        rowType: 'OT',
+        shcode: shiftCode,
+        mlcode: overtimeMealCode,
+        mncode: overtimeMenuCode
+      });
     }
   });
 
   if (issues.length > 0) {
     return {
       success: false,
-      message: issues.slice(0, 5).join('\n')
+      message: issues.slice(0, 5).join('\n'),
+      debug: {
+        receivedEntriesPreview: receivedEntriesPreview,
+        writtenRowsPreview: writtenRowsPreview
+      }
     };
   }
 
@@ -329,7 +362,11 @@ function handleSubmit(payload) {
   return {
     success: true,
     message: 'Đăng ký thành công',
-    writtenRows: orderSheetRows.length
+    writtenRows: orderSheetRows.length,
+    debug: {
+      receivedEntriesPreview: receivedEntriesPreview,
+      writtenRowsPreview: writtenRowsPreview
+    }
   };
 }
 
