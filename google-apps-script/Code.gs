@@ -182,13 +182,21 @@ function handleSubmit(payload) {
     code: normalizeCode(r.mncode),
     name: normalizeText(r.mnname)
   })).filter((r) => r.code);
+  const udc = readSheetObjects(ss, SHEET_NAMES.udc).map((r) => ({
+    udcode: normalizeCode(r.udcode),
+    shcode: normalizeCode(r.shcode),
+    mlcode: normalizeCode(r.mlcode),
+    mncode: normalizeCode(r.mncode)
+  })).filter((r) => r.udcode);
 
   const shiftMap = indexByCode(shifts);
   const mealMap = indexByCode(meals);
   const menuMap = indexByCode(menus);
+  const validationMaps = buildValidationMaps_(udc);
 
   const nowText = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   const orderSheetRows = [];
+  const issues = [];
 
   entries.forEach((entry) => {
     const dayOff = normalizeCode(entry.dayOff) === 'Y';
@@ -200,10 +208,36 @@ function handleSubmit(payload) {
     const menuCode = normalizeCode(entry.menuCode);
     const overtime = normalizeCode(entry.overtime);
     const overtimeMealCode = normalizeCode(entry.overtimeMealCode);
+    const overtimeMenuCode = normalizeCode(entry.overtimeMenuCode);
 
     const shift = shiftMap[shiftCode];
     const meal = mealMap[mealCode];
     const menu = menuMap[menuCode];
+
+    if (!shift || !meal || !menu) {
+      issues.push('Ngày ' + orderDate + ': thiếu hoặc sai ca/bữa chính/món chính');
+      return;
+    }
+
+    if (!isMealAllowedForShift_(validationMaps, shiftCode, mealCode)) {
+      issues.push('Ngày ' + orderDate + ': bữa chính ' + mealCode + ' không hợp lệ cho ca ' + shiftCode);
+    }
+
+    if (!isMenuAllowedForMeal_(validationMaps, mealCode, menuCode)) {
+      issues.push('Ngày ' + orderDate + ': món ' + menuCode + ' không thuộc bữa ' + mealCode);
+    }
+
+    if (meal.isOvertime) {
+      issues.push('Ngày ' + orderDate + ': bữa chính ' + mealCode + ' là bữa tăng ca, không hợp lệ cho bữa chính');
+    }
+
+    if (overtime !== 'Y' && overtime !== 'N') {
+      issues.push('Ngày ' + orderDate + ': trạng thái tăng ca không hợp lệ');
+    }
+
+    if (issues.length > 0) {
+      return;
+    }
 
     orderSheetRows.push({
       epuid: employee.code,
@@ -221,8 +255,39 @@ function handleSubmit(payload) {
       mnname: menu ? menu.name : ''
     });
 
+    if (overtime === 'Y' && (!overtimeMealCode || !overtimeMenuCode)) {
+      issues.push('Ngày ' + orderDate + ': tăng ca phải chọn đủ bữa OT và món OT');
+      orderSheetRows.pop();
+      return;
+    }
+
     if (overtime === 'Y' && overtimeMealCode) {
       const overtimeMeal = mealMap[overtimeMealCode];
+      const overtimeMenu = menuMap[overtimeMenuCode];
+
+      if (!overtimeMeal || !overtimeMenu) {
+        issues.push('Ngày ' + orderDate + ': thiếu hoặc sai bữa tăng ca/món tăng ca');
+        orderSheetRows.pop();
+        return;
+      }
+
+      if (!overtimeMeal.isOvertime) {
+        issues.push('Ngày ' + orderDate + ': bữa tăng ca ' + overtimeMealCode + ' không phải bữa OT');
+      }
+
+      if (!isMealAllowedForShift_(validationMaps, shiftCode, overtimeMealCode)) {
+        issues.push('Ngày ' + orderDate + ': bữa OT ' + overtimeMealCode + ' không hợp lệ cho ca ' + shiftCode);
+      }
+
+      if (!isMenuAllowedForMeal_(validationMaps, overtimeMealCode, overtimeMenuCode)) {
+        issues.push('Ngày ' + orderDate + ': món OT ' + overtimeMenuCode + ' không thuộc bữa OT ' + overtimeMealCode);
+      }
+
+      if (issues.length > 0) {
+        orderSheetRows.pop();
+        return;
+      }
+
       orderSheetRows.push({
         epuid: employee.code,
         epfullname: employee.name,
@@ -235,11 +300,18 @@ function handleSubmit(payload) {
         mlcode: overtimeMeal ? overtimeMeal.code : '',
         mlname: overtimeMeal ? overtimeMeal.name : '',
         mlev04: overtimeMeal ? overtimeMeal.mlev04 : 'Y',
-        mncode: menu ? menu.code : '',
-        mnname: menu ? menu.name : ''
+        mncode: overtimeMenu ? overtimeMenu.code : '',
+        mnname: overtimeMenu ? overtimeMenu.name : ''
       });
     }
   });
+
+  if (issues.length > 0) {
+    return {
+      success: false,
+      message: issues.slice(0, 5).join('\n')
+    };
+  }
 
   if (orderSheetRows.length === 0) {
     return { success: false, message: 'Không có ngày làm việc hợp lệ để ghi đơn' };
@@ -448,6 +520,44 @@ function indexByCode(items) {
     result[item.code] = item;
   });
   return result;
+}
+
+function buildValidationMaps_(udcRows) {
+  const shiftMealMap = {};
+  const mealMenuMap = {};
+
+  udcRows.forEach((row) => {
+    if (row.udcode === 'SHM' && row.shcode && row.mlcode) {
+      if (!shiftMealMap[row.shcode]) shiftMealMap[row.shcode] = {};
+      shiftMealMap[row.shcode][row.mlcode] = true;
+    }
+
+    if (row.udcode === 'MEM' && row.mlcode && row.mncode) {
+      if (!mealMenuMap[row.mlcode]) mealMenuMap[row.mlcode] = {};
+      mealMenuMap[row.mlcode][row.mncode] = true;
+    }
+  });
+
+  return {
+    shiftMealMap: shiftMealMap,
+    mealMenuMap: mealMenuMap
+  };
+}
+
+function isMealAllowedForShift_(validationMaps, shiftCode, mealCode) {
+  return Boolean(
+    validationMaps
+    && validationMaps.shiftMealMap[shiftCode]
+    && validationMaps.shiftMealMap[shiftCode][mealCode]
+  );
+}
+
+function isMenuAllowedForMeal_(validationMaps, mealCode, menuCode) {
+  return Boolean(
+    validationMaps
+    && validationMaps.mealMenuMap[mealCode]
+    && validationMaps.mealMenuMap[mealCode][menuCode]
+  );
 }
 
 function readSheetObjects(ss, sheetName) {
