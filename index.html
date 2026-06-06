@@ -646,7 +646,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "2026-06-06-1";
+    const APP_VERSION = "2026-06-07-2";
     const DAY_NAMES = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
     const API_BASE_URL = "https://script.google.com/macros/s/AKfycbyXNz4z2OaeRViCB4di99DBvcT-9hSCnzjq5_I1avZWyZyVDgs0oH9IVMQq_tzeJlRo/exec";
 
@@ -845,6 +845,8 @@
         overtime: "N",
         overtimeMealCode: "",
         overtimeMenuCode: "",
+        overtimeMealTouched: false,
+        overtimeMenuTouched: false,
         dayOff: "N"
       };
       return state.dayEntries[dayKey];
@@ -857,6 +859,8 @@
       entry.overtime = "";
       entry.overtimeMealCode = "";
       entry.overtimeMenuCode = "";
+      entry.overtimeMealTouched = false;
+      entry.overtimeMenuTouched = false;
     }
 
     function applyDefaultDaySelections(entry) {
@@ -866,6 +870,8 @@
       entry.overtime = "N";
       entry.overtimeMealCode = "";
       entry.overtimeMenuCode = "";
+      entry.overtimeMealTouched = false;
+      entry.overtimeMenuTouched = false;
     }
 
     function optionsHtml(items, selectedValue, placeholderText) {
@@ -942,15 +948,17 @@
       if (entry.overtime !== "Y") {
         entry.overtimeMealCode = "";
         entry.overtimeMenuCode = "";
+        entry.overtimeMealTouched = false;
+        entry.overtimeMenuTouched = false;
       }
       if (!overtimeMeals.some((item) => item.code === entry.overtimeMealCode)) entry.overtimeMealCode = "";
-      if (!isDayOff && entry.overtime === "Y" && !entry.overtimeMealCode && overtimeMeals.length === 1) {
+      if (!isDayOff && entry.overtime === "Y" && !entry.overtimeMealCode && overtimeMeals.length === 1 && !entry.overtimeMealTouched) {
         entry.overtimeMealCode = overtimeMeals[0].code;
       }
 
       const overtimeMenus = getMenusForMeal(entry.overtimeMealCode);
       if (!overtimeMenus.some((item) => item.code === entry.overtimeMenuCode)) entry.overtimeMenuCode = "";
-      if (!isDayOff && entry.overtime === "Y" && entry.overtimeMealCode && !entry.overtimeMenuCode && overtimeMenus.length === 1) {
+      if (!isDayOff && entry.overtime === "Y" && entry.overtimeMealCode && !entry.overtimeMenuCode && overtimeMenus.length === 1 && !entry.overtimeMenuTouched) {
         entry.overtimeMenuCode = overtimeMenus[0].code;
       }
 
@@ -1048,6 +1056,8 @@
         entry.menuCode = "";
         entry.overtimeMealCode = "";
         entry.overtimeMenuCode = "";
+        entry.overtimeMealTouched = false;
+        entry.overtimeMenuTouched = false;
       }
 
       if (field === "mealCode") {
@@ -1055,13 +1065,21 @@
       }
 
       if (field === "overtimeMealCode") {
+        entry.overtimeMealTouched = true;
         entry.overtimeMenuCode = "";
+        entry.overtimeMenuTouched = false;
+      }
+
+      if (field === "overtimeMenuCode") {
+        entry.overtimeMenuTouched = true;
       }
 
       if (field === "overtime" && entry.overtime !== "Y") {
         entry.overtime = "N";
         entry.overtimeMealCode = "";
         entry.overtimeMenuCode = "";
+        entry.overtimeMealTouched = false;
+        entry.overtimeMenuTouched = false;
       }
 
       buildMenuCards();
