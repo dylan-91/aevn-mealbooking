@@ -248,10 +248,10 @@ function handleSubmit(payload) {
       orderdate: orderDate,
       shcode: shift ? shift.code : '',
       shiftname: shift ? shift.name : '',
-      mlcode: meal ? meal.code : '',
+      mlcode: mealCode,
       mlname: meal ? meal.name : '',
       mlev04: meal ? meal.mlev04 : '',
-      mncode: menu ? menu.code : '',
+      mncode: menuCode,
       mnname: menu ? menu.name : ''
     });
 
@@ -297,10 +297,10 @@ function handleSubmit(payload) {
         orderdate: orderDate,
         shcode: shift ? shift.code : '',
         shiftname: shift ? shift.name : '',
-        mlcode: overtimeMeal ? overtimeMeal.code : '',
+        mlcode: overtimeMealCode,
         mlname: overtimeMeal ? overtimeMeal.name : '',
         mlev04: overtimeMeal ? overtimeMeal.mlev04 : 'Y',
-        mncode: overtimeMenu ? overtimeMenu.code : '',
+        mncode: overtimeMenuCode,
         mnname: overtimeMenu ? overtimeMenu.name : ''
       });
     }
