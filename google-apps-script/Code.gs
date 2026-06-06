@@ -8,6 +8,8 @@ const SHEET_NAMES = {
   orders: 'orders'
 };
 
+const SYNCABLE_SHEETS = ['employees', 'udc', 'shifts', 'meals', 'menus'];
+
 const ORDERED_HEADERS = ['epcode', 'week', 'year', 'date'];
 const ORDERS_HEADERS = ['epuid', 'epfullname', 'dpcode', 'dpname', 'date', 'orderdate', 'shcode', 'shiftname', 'mlcode', 'mlname', 'mlev04', 'mncode', 'mnname'];
 
@@ -35,6 +37,10 @@ function doPost(e) {
   try {
     const body = parseBody(e && e.postData ? e.postData.contents : '');
     const action = normalizeText(body.action).toLowerCase();
+
+    if (action === 'syncmasterdata') {
+      return jsonResponse(handleSyncMasterData(body));
+    }
 
     if (action === 'submit') {
       return jsonResponse(handleSubmit(body));
@@ -77,8 +83,8 @@ function handleBootstrap() {
 }
 
 function handleLogin(epcode, eppasswd) {
-  if (!epcode || epcode.length < 6) {
-    return { success: false, message: 'Mã nhân viên phải có ít nhất 6 ký tự' };
+  if (!epcode || epcode.length < 4) {
+    return { success: false, message: 'Mã nhân viên phải có ít nhất 4 ký tự' };
   }
 
   if (!eppasswd) {
@@ -123,7 +129,7 @@ function handleLogin(epcode, eppasswd) {
 
 function handleSubmit(payload) {
   const epcode = normalizeCode(payload.epcode);
-  if (!epcode || epcode.length < 6) {
+  if (!epcode || epcode.length < 4) {
     return { success: false, message: 'Mã nhân viên không hợp lệ' };
   }
 
@@ -134,8 +140,8 @@ function handleSubmit(payload) {
 
   const ss = getWorkbook();
   const registration = getNextWeekWindow();
-  const week = Number(payload.week || registration.week);
-  const year = Number(payload.year || registration.year);
+  const week = Number(registration.week);
+  const year = Number(registration.year);
 
   const employees = readSheetObjects(ss, SHEET_NAMES.employees);
   const employee = employees
@@ -255,11 +261,168 @@ function handleSubmit(payload) {
   };
 }
 
+function handleSyncMasterData(payload) {
+  const providedKey = normalizeText(payload.apiKey || payload.apikey || payload.token);
+  const expectedKey = normalizeText(PropertiesService.getScriptProperties().getProperty('SYNC_API_KEY'));
+
+  if (!expectedKey) {
+    return { success: false, message: 'Missing Script Property: SYNC_API_KEY' };
+  }
+
+  if (!providedKey || providedKey !== expectedKey) {
+    return { success: false, message: 'Unauthorized sync request' };
+  }
+
+  const tables = payload.tables || {};
+  const ss = getWorkbook();
+  const syncResult = {};
+
+  SYNCABLE_SHEETS.forEach((sheetKey) => {
+    const tablePayload = tables[sheetKey];
+    if (tablePayload === undefined || tablePayload === null) {
+      syncResult[sheetKey] = { synced: false, rows: 0, message: 'Skipped (no payload)' };
+      return;
+    }
+
+    const parsed = parseIncomingTable(tablePayload);
+    if (!parsed.success) {
+      throw new Error('Invalid payload for ' + sheetKey + ': ' + parsed.message);
+    }
+
+    const sheetName = SHEET_NAMES[sheetKey];
+    const headers = parsed.headers.length > 0 ? parsed.headers : getSheetHeaders(ss, sheetName);
+    if (headers.length === 0) {
+      throw new Error('Headers are required for ' + sheetKey + '. Send non-empty data or include columns.');
+    }
+
+    replaceSheetData(ss, sheetName, headers, parsed.rows);
+    syncResult[sheetKey] = { synced: true, rows: parsed.rows.length };
+  });
+
+  return {
+    success: true,
+    message: 'Master data synchronized',
+    result: syncResult
+  };
+}
+
 function appendObjects(ss, sheetName, headers, objects) {
   const sheet = ensureSheet(ss, sheetName, headers);
   const values = objects.map((obj) => headers.map((h) => obj[h] || ''));
   const startRow = Math.max(sheet.getLastRow() + 1, 2);
   sheet.getRange(startRow, 1, values.length, headers.length).setValues(values);
+}
+
+function replaceSheetData(ss, sheetName, headers, rows) {
+  const safeHeaders = Array.isArray(headers)
+    ? headers.map((h) => normalizeText(h)).filter(Boolean)
+    : [];
+
+  if (safeHeaders.length === 0) {
+    throw new Error('Headers are required for sheet ' + sheetName);
+  }
+
+  const sheet = ensureSheet(ss, sheetName, safeHeaders);
+  sheet.clearContents();
+  sheet.getRange(1, 1, 1, safeHeaders.length).setValues([safeHeaders]);
+
+  if (!rows || rows.length === 0) {
+    return;
+  }
+
+  const values = rows.map((row) => safeHeaders.map((h) => row[h] === undefined || row[h] === null ? '' : row[h]));
+  sheet.getRange(2, 1, values.length, safeHeaders.length).setValues(values);
+}
+
+function getSheetHeaders(ss, sheetName) {
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet || sheet.getLastRow() < 1) return [];
+
+  const lastColumn = Math.max(sheet.getLastColumn(), 1);
+  return sheet.getRange(1, 1, 1, lastColumn)
+    .getValues()[0]
+    .map((h) => normalizeText(h))
+    .filter(Boolean);
+}
+
+function parseIncomingTable(tablePayload) {
+  if (Array.isArray(tablePayload)) {
+    return parseArrayOfObjectsTable(tablePayload);
+  }
+
+  if (tablePayload && typeof tablePayload === 'object') {
+    const columns = Array.isArray(tablePayload.columns) ? tablePayload.columns : null;
+
+    if (columns && Array.isArray(tablePayload.rows)) {
+      return parseColumnsRowsTable(columns, tablePayload.rows);
+    }
+
+    if (Array.isArray(tablePayload.data)) {
+      return parseArrayOfObjectsTable(tablePayload.data);
+    }
+  }
+
+  return { success: false, message: 'Expected array, {columns, rows}, or {data}' };
+}
+
+function parseArrayOfObjectsTable(rows) {
+  const normalizedRows = rows.filter((r) => r && typeof r === 'object' && !Array.isArray(r));
+  if (normalizedRows.length === 0) {
+    return { success: true, headers: [], rows: [] };
+  }
+
+  const headerSet = {};
+  normalizedRows.forEach((row) => {
+    Object.keys(row).forEach((key) => {
+      const normalizedKey = normalizeText(key);
+      if (normalizedKey) headerSet[normalizedKey] = true;
+    });
+  });
+  const headers = Object.keys(headerSet);
+
+  return {
+    success: true,
+    headers: headers,
+    rows: normalizedRows.map((row) => {
+      const result = {};
+      headers.forEach((h) => {
+        result[h] = row[h];
+      });
+      return result;
+    })
+  };
+}
+
+function parseColumnsRowsTable(columns, rows) {
+  const headers = columns.map((c) => normalizeText(c)).filter(Boolean);
+  if (headers.length === 0) {
+    return { success: false, message: 'Columns are empty' };
+  }
+
+  const normalizedRows = rows.map((row) => {
+    const result = {};
+
+    if (Array.isArray(row)) {
+      headers.forEach((h, idx) => {
+        result[h] = idx < row.length ? row[idx] : '';
+      });
+      return result;
+    }
+
+    if (row && typeof row === 'object') {
+      headers.forEach((h) => {
+        result[h] = row[h];
+      });
+      return result;
+    }
+
+    headers.forEach((h) => {
+      result[h] = '';
+    });
+    return result;
+  });
+
+  return { success: true, headers: headers, rows: normalizedRows };
 }
 
 function ensureSheet(ss, sheetName, headers) {

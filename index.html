@@ -256,39 +256,6 @@
       font-weight: 700;
     }
 
-    .banner {
-      margin: 12px 0 14px;
-      border-radius: 16px;
-      background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(22, 163, 74, 0.08));
-      border: 1px dashed rgba(37, 99, 235, 0.16);
-      padding: 12px;
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-    }
-
-    .stat {
-      background: rgba(255,255,255,0.78);
-      border: 1px solid rgba(15, 23, 42, 0.04);
-      border-radius: 14px;
-      padding: 10px 12px;
-    }
-
-    .stat small {
-      display: block;
-      color: #6b7280;
-      font-size: 11px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-    }
-
-    .stat strong {
-      display: block;
-      margin-top: 5px;
-      font-size: 15px;
-      color: #0f172a;
-    }
 
     .menu-stack {
       display: grid;
@@ -610,7 +577,6 @@
       .brand h1 { font-size: 28px; }
       .brand h1 span { font-size: 24px; }
       .field-grid.two-col { grid-template-columns: 1fr 1fr; }
-      .banner { grid-template-columns: 1fr; }
       .day-picker { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     }
   </style>
@@ -653,13 +619,6 @@
             </div>
             <h2 id="employeeName" class="employee-name">Mary Nguyen (Warehouse)</h2>
             <div id="employeeCodeLabel" class="employee-meta">Mã nhân viên: AE0791</div>
-          </div>
-
-          <div class="banner">
-            <div class="stat">
-              <small>Tuần đăng ký</small>
-              <strong id="weekLabel">...</strong>
-            </div>
           </div>
 
           <div id="dayPicker" class="day-picker"></div>
@@ -708,7 +667,6 @@
     const loginButton = document.getElementById("loginButton");
     const logoutButton = document.getElementById("logoutButton");
     const submitButton = document.getElementById("submitButton");
-    const weekLabel = document.getElementById("weekLabel");
     const busyOverlay = document.getElementById("busyOverlay");
 
     const workbookState = {
@@ -764,7 +722,6 @@
       const monday = getNextMonday();
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
-      weekLabel.textContent = `${formatDate(monday)} - ${formatDate(sunday)}`;
       state.registrationWindow = {
         monday,
         sunday,
@@ -1164,8 +1121,8 @@
     async function login(code, password) {
       const normalizedCode = normalizeCode(code);
       const normalizedPassword = normalizeText(password);
-      if (normalizedCode.length < 6) {
-        showToast("Mã nhân viên phải có ít nhất 6 ký tự");
+      if (normalizedCode.length < 4) {
+        showToast("Mã nhân viên phải có ít nhất 4 ký tự");
         employeeCodeInput.focus();
         return false;
       }

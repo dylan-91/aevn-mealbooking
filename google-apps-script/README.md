@@ -162,3 +162,252 @@ https://YOUR_USERNAME.github.io/YOUR_REPO/
 Ví dụ:
 - repo `meal-booking` -> `https://YOUR_USERNAME.github.io/meal-booking/`
 - repo `mael-booking-github` -> `https://YOUR_USERNAME.github.io/mael-booking-github/`
+
+## 13) API Integration for .NET
+
+Muc nay dung cho he thong .NET goi API Apps Script de:
+- Lay du lieu master cho web
+- Dang nhap nhan vien
+- Ghi dang ky suat an
+- Dong bo master data tu he thong chinh ve Google Sheets
+
+### 13.1 Base URL
+
+```text
+https://script.google.com/macros/s/<DEPLOYMENT_ID>/exec
+```
+
+Dat trong .NET:
+
+```csharp
+var baseUrl = "https://script.google.com/macros/s/<DEPLOYMENT_ID>/exec";
+```
+
+### 13.1.1 Cach lay DEPLOYMENT_ID
+
+Trong Google Apps Script:
+1. Vao `Deploy` -> `Manage deployments`.
+2. Mo deployment dang dung (Web app).
+3. Copy `Web app URL`, vi du:
+
+```text
+https://script.google.com/macros/s/AKfycbw_Cowr316pDaXXm7yRNTR4587UDM8-RmayDiiyjxjFavlYt1fa3DZ7ubqbc8jxwLGDlA/exec
+```
+
+`DEPLOYMENT_ID` la doan nam giua `/s/` va `/exec`, vi du:
+
+```text
+AKfycbw_Cowr316pDaXXm7yRNTR4587UDM8-RmayDiiyjxjFavlYt1fa3DZ7ubqbc8jxwLGDlA
+```
+
+Luu y:
+- Dung URL ket thuc bang `/exec` cho he thong that.
+- URL `/dev` chi dung test trong editor (khong dung cho production).
+
+### 13.2 GET bootstrap
+
+Muc dich: lay shifts, meals, menus, udc va registrationWindow.
+
+```http
+GET {baseUrl}?action=bootstrap
+```
+
+Response mau:
+
+```json
+{
+  "success": true,
+  "registrationWindow": {
+    "startDate": "2026-06-08",
+    "endDate": "2026-06-14",
+    "week": 24,
+    "year": 2026
+  },
+  "shifts": [],
+  "meals": [],
+  "menus": [],
+  "udc": []
+}
+```
+
+### 13.3 GET login
+
+Muc dich: kiem tra ma nhan vien + mat khau (`eppasswd`) va trang thai da dang ky tuan ke tiep.
+
+```http
+GET {baseUrl}?action=login&epcode=AE0001&eppasswd=123456
+```
+
+Response mau:
+
+```json
+{
+  "success": true,
+  "employee": {
+    "code": "AE0001",
+    "password": "123456",
+    "name": "Nguyen Van A",
+    "dpcode": "D01",
+    "dpname": "Dyeing"
+  },
+  "alreadyRegistered": false,
+  "registrationWindow": {
+    "startDate": "2026-06-08",
+    "endDate": "2026-06-14",
+    "week": 24,
+    "year": 2026
+  }
+}
+```
+
+### 13.4 POST submit
+
+Muc dich: ghi dang ky suat an. `week/year` gui len se bi backend bo qua; backend tu tinh tuan ke tiep theo thoi diem hien tai.
+
+```http
+POST {baseUrl}
+Content-Type: application/json
+```
+
+Body mau:
+
+```json
+{
+  "action": "submit",
+  "epcode": "AE0001",
+  "week": 24,
+  "year": 2026,
+  "entries": [
+    {
+      "orderDate": "2026-06-08",
+      "shiftCode": "C1",
+      "mealCode": "ML01",
+      "menuCode": "MN01",
+      "overtime": "N",
+      "overtimeMealCode": "",
+      "dayOff": "N"
+    }
+  ]
+}
+```
+
+### 13.5 POST syncMasterData
+
+Muc dich: dong bo du lieu master ve 5 sheet:
+- employees
+- udc
+- shifts
+- meals
+- menus
+
+Yeu cau bao mat:
+- Tao Script Property `SYNC_API_KEY` trong Apps Script.
+- Client phai gui dung `apiKey`.
+
+```http
+POST {baseUrl}
+Content-Type: application/json
+```
+
+Body mau (kieu DataTable: `columns` + `rows`):
+
+```json
+{
+  "action": "syncMasterData",
+  "apiKey": "YOUR_SYNC_API_KEY",
+  "tables": {
+    "employees": {
+      "columns": ["epuid", "eppasswd", "epfullname", "dpcode", "dpname"],
+      "rows": [
+        ["AE0001", "123456", "Nguyen Van A", "D01", "Dyeing"],
+        ["AE0002", "abcdef", "Tran Thi B", "D02", "Lab"]
+      ]
+    },
+    "udc": {
+      "columns": ["udcode", "shcode", "mlcode", "mncode"],
+      "rows": []
+    },
+    "shifts": { "columns": ["shcode", "shname"], "rows": [] },
+    "meals": { "columns": ["mlcode", "mlname", "mlev04", "mnev04"], "rows": [] },
+    "menus": { "columns": ["mncode", "mnname"], "rows": [] }
+  }
+}
+```
+
+Ghi chu:
+- Co the gui theo 3 dang: `array<object>`, `{columns, rows}`, hoac `{data:[...]}`.
+- Neu mot bang khong gui trong `tables`, API se bo qua bang do.
+
+### 13.6 C# HttpClient sample
+
+```csharp
+using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Web;
+
+var baseUrl = "https://script.google.com/macros/s/<DEPLOYMENT_ID>/exec";
+using var http = new HttpClient();
+
+// 1) bootstrap
+var bootstrapUrl = baseUrl + "?action=bootstrap";
+var bootstrapJson = await http.GetStringAsync(bootstrapUrl);
+
+// 2) login
+var loginQuery = HttpUtility.ParseQueryString(string.Empty);
+loginQuery["action"] = "login";
+loginQuery["epcode"] = "AE0001";
+loginQuery["eppasswd"] = "123456";
+var loginUrl = baseUrl + "?" + loginQuery;
+var loginJson = await http.GetStringAsync(loginUrl);
+
+// 3) submit
+var submitPayload = new
+{
+    action = "submit",
+    epcode = "AE0001",
+    week = 24,
+    year = 2026,
+    entries = new[]
+    {
+        new {
+            orderDate = "2026-06-08",
+            shiftCode = "C1",
+            mealCode = "ML01",
+            menuCode = "MN01",
+            overtime = "N",
+            overtimeMealCode = "",
+            dayOff = "N"
+        }
+    }
+};
+var submitResp = await http.PostAsJsonAsync(baseUrl, submitPayload);
+var submitJson = await submitResp.Content.ReadAsStringAsync();
+
+// 4) sync master data
+var syncPayload = new
+{
+    action = "syncMasterData",
+    apiKey = "YOUR_SYNC_API_KEY",
+    tables = new
+    {
+        employees = new {
+            columns = new[] { "epuid", "eppasswd", "epfullname", "dpcode", "dpname" },
+            rows = new object[][]
+            {
+                new object[] { "AE0001", "123456", "Nguyen Van A", "D01", "Dyeing" }
+            }
+        }
+    }
+};
+var syncResp = await http.PostAsJsonAsync(baseUrl, syncPayload);
+var syncJson = await syncResp.Content.ReadAsStringAsync();
+```
+
+### 13.7 Checklist for .NET integration
+
+1. Apps Script da deploy ban moi nhat.
+2. Script Property `SPREADSHEET_ID` da dung.
+3. Neu goi `syncMasterData`, da tao `SYNC_API_KEY`.
+4. He thong .NET dang goi URL `/exec` (khong phai `/dev`).
+5. Log response JSON de de debug khi `success = false`.
