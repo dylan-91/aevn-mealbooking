@@ -397,6 +397,16 @@
       color: #64748b;
     }
 
+    .submit-result-text {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #0f172a;
+      font-family: Consolas, "Courier New", monospace;
+    }
+
     .menu-card {
       background: var(--panel-strong);
       border-radius: 18px;
@@ -629,6 +639,13 @@
 
           <div id="menuStack" class="menu-stack"></div>
 
+          <div id="submitResultCard" class="summary-card" style="display: none;">
+            <p class="summary-title">Kết quả gửi đăng ký</p>
+            <div class="summary-wrap">
+              <pre id="submitResultText" class="submit-result-text"></pre>
+            </div>
+          </div>
+
           <div class="sticky-footer">
             <button id="submitButton" class="button button-success" type="button">Đăng ký</button>
           </div>
@@ -646,7 +663,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "2026-06-07-5";
+    const APP_VERSION = "2026-06-07-6";
     const DAY_NAMES = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
     const API_BASE_URL = "https://script.google.com/macros/s/AKfycbyXNz4z2OaeRViCB4di99DBvcT-9hSCnzjq5_I1avZWyZyVDgs0oH9IVMQq_tzeJlRo/exec";
 
@@ -679,6 +696,8 @@
     const loginHint = document.getElementById("loginHint");
     const dayPicker = document.getElementById("dayPicker");
     const menuStack = document.getElementById("menuStack");
+    const submitResultCard = document.getElementById("submitResultCard");
+    const submitResultText = document.getElementById("submitResultText");
     const toast = document.getElementById("toast");
     const loginButton = document.getElementById("loginButton");
     const logoutButton = document.getElementById("logoutButton");
@@ -772,6 +791,13 @@
     function setView(view) {
       loginScreen.classList.toggle("is-active", view === "login");
       homeScreen.classList.toggle("is-active", view === "home");
+    }
+
+    function setSubmitResult(message) {
+      if (!submitResultCard || !submitResultText) return;
+      const normalized = normalizeText(message);
+      submitResultText.textContent = normalized || "(không có dữ liệu)";
+      submitResultCard.style.display = "block";
     }
 
     function apiUrl(action, params = {}) {
@@ -1135,7 +1161,8 @@
 
       const validation = validateRegistrationEntries();
       if (!validation.ok) {
-        alert(validation.message);
+        setSubmitResult(validation.message);
+        showToast("Thiếu thông tin đăng ký");
         return;
       }
 
@@ -1171,18 +1198,20 @@
           const debugLines = debug && Array.isArray(debug.writtenRowsPreview)
             ? debug.writtenRowsPreview.map((row) => `${row.orderDate} [${row.rowType}] ${row.mlcode}/${row.mncode}`).join("\n")
             : "";
-          alert(`${result.message || "Đăng ký không thành công."}${debugLines ? `\n\nDebug rows:\n${debugLines}` : ""}`);
+          setSubmitResult(`${result.message || "Đăng ký không thành công."}${debugLines ? `\n\nDebug rows:\n${debugLines}` : ""}`);
+          showToast("Đăng ký không thành công");
           return;
         }
         const writtenPreview = debug && Array.isArray(debug.writtenRowsPreview)
           ? debug.writtenRowsPreview.map((row) => `${row.orderDate} [${row.rowType}] ${row.mlcode}/${row.mncode}`)
           : [];
         const previewText = writtenPreview.length ? `\n\nDebug rows:\n${writtenPreview.join("\n")}` : "";
-        alert(`Đăng ký thành công.${previewText}`);
-        logout();
+        setSubmitResult(`Đăng ký thành công.${previewText}`);
+        showToast("Đăng ký thành công");
       } catch (error) {
         console.error(error);
-        alert("Có lỗi khi gửi đăng ký lên server.");
+        setSubmitResult("Có lỗi khi gửi đăng ký lên server.");
+        showToast("Lỗi gửi đăng ký");
       } finally {
         setBusy(false);
       }
@@ -1251,6 +1280,8 @@
       localStorage.removeItem("mealBookingEmployeeCode");
       employeeCodeInput.value = "";
       employeePasswordInput.value = "";
+      if (submitResultCard) submitResultCard.style.display = "none";
+      if (submitResultText) submitResultText.textContent = "";
       setView("login");
       showToast("Đã đăng xuất");
     }
