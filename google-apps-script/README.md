@@ -304,6 +304,24 @@ Yeu cau bao mat:
 - Tao Script Property `SYNC_API_KEY` trong Apps Script.
 - Client phai gui dung `apiKey`.
 
+### 13.5.1 Cach lay YOUR_SYNC_API_KEY
+
+Trong Google Apps Script:
+1. Mo project Apps Script dang deploy Web App.
+2. Vao `Project Settings`.
+3. Tim phan `Script properties`.
+4. Tao hoac sua key:
+  - Property: `SYNC_API_KEY`
+  - Value: chuoi bi mat do ban tu dat (vi du 32-64 ky tu ngau nhien)
+5. Bam `Save script properties`.
+
+Gia tri trong cot `Value` chinh la `YOUR_SYNC_API_KEY` de truyen trong payload .NET.
+
+Khuyen nghi:
+- Khong hard-code key trong source code .NET.
+- Luu key trong `appsettings.<Environment>.json`, Secret Manager, hoac bien moi truong.
+- Khi can rotate key: doi `SYNC_API_KEY` trong Apps Script va cap nhat cau hinh he thong .NET.
+
 ```http
 POST {baseUrl}
 Content-Type: application/json
